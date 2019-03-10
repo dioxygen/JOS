@@ -23,7 +23,6 @@ void
 i386_init(void)
 {
 	extern char edata[], end[];
-
 	// Before doing anything else, complete the ELF loading process.
 	// Clear the uninitialized global data (BSS) section of our program.
 	// This ensures that all static/global variables start out zero.
@@ -34,7 +33,9 @@ i386_init(void)
 	cons_init();
 
 	cprintf("6828 decimal is %o octal!\n", 6828);
-
+        
+	int x=1,y=3,z=4,w;
+	w=cprintf("x %d, y %x, z %d\n",x,y,z);
 	// Test the stack backtrace function (lab 1 only)
 	test_backtrace(5);
 
