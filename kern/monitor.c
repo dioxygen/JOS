@@ -58,7 +58,6 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	
 	// Your code here.
 	uint32_t * ebp, * eip;
 	uint32_t res;
@@ -92,6 +91,7 @@ runcmd(char *buf, struct Trapframe *tf)
 	int argc;
 	char *argv[MAXARGS];
 	int i;
+
 	// Parse the command buffer into whitespace-separated arguments
 	argc = 0;
 	argv[argc] = 0;

@@ -74,7 +74,7 @@ relocated:
 	movl	$0x0,%ebp			# nuke frame pointer
 
 	# Set the stack pointer
-	movl    $(bootstacktop),%esp
+	movl	$(bootstacktop),%esp
 
 	# now to C code
 	call	i386_init
