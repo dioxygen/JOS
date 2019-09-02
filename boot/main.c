@@ -41,6 +41,7 @@ bootmain(void)
 	struct Proghdr *ph, *eph;
 
 	// read 1st page off disk
+	//这里感觉是不是有点读多了，而且会和后面的读取操作读取到重复的内容?
 	readseg((uint32_t) ELFHDR, SECTSIZE*8, 0);
 
 	// is this a valid ELF?
@@ -48,6 +49,7 @@ bootmain(void)
 		goto bad;
 
 	// load each program segment (ignores ph flags)
+	//ph指向了program header table第一项，而eph指向了结束的地方
 	ph = (struct Proghdr *) ((uint8_t *) ELFHDR + ELFHDR->e_phoff);
 	eph = ph + ELFHDR->e_phnum;
 	for (; ph < eph; ph++)
@@ -66,7 +68,7 @@ bad:
 		/* do nothing */;
 }
 
-// Read 'count' bytes at 'offset' from kernel into physical address 'pa'.
+// Read 'count' bytes at 'offset' from kernel(啊啊！这里的kernel指的是硬盘上的kernel镜像文件) into physical address 'pa'.
 // Might copy more than asked
 void
 readseg(uint32_t pa, uint32_t count, uint32_t offset)
@@ -103,6 +105,8 @@ waitdisk(void)
 		/* do nothing */;
 }
 
+//这个时候还没有文件系统，是怎么读文件的呢？
+//既然可以采用这种不需要文件系统参与的文件读写过程，那么引入文件系统的好处在哪里呢？
 void
 readsect(void *dst, uint32_t offset)
 {
@@ -120,6 +124,7 @@ readsect(void *dst, uint32_t offset)
 	waitdisk();
 
 	// read a sector
+	//这里追下去发现使用了gcc内联汇编，没看懂
 	insl(0x1F0, dst, SECTSIZE/4);
 }
 
