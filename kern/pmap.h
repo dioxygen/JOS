@@ -34,6 +34,7 @@ _paddr(const char *file, int line, void *kva)
 
 /* This macro takes a physical address and returns the corresponding kernel
  * virtual address.  It panics if you pass an invalid physical address. */
+//从PADDR和KADDR这两个函数中可以看到：内核虚拟地址和物理地址之间的转换是通过直接加减KERNBASE实现的
 #define KADDR(pa) _kaddr(__FILE__, __LINE__, pa)
 
 static inline void*
