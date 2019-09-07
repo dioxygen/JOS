@@ -65,6 +65,7 @@ protcseg:
   movw    %ax, %ss                # -> SS: Stack Segment
   
   # Set up the stack pointer and call into C.
+  # 从boot loader加载的地址往下生成栈
   movl    $start, %esp
   call bootmain
 
@@ -72,6 +73,8 @@ protcseg:
 spin:
   jmp spin
 
+# 为什么说使用这gdt就可以使得虚拟地址经过段翻译之后等于物理地址？懂了
+# 感觉这里设置了代码段和数据段，然后base设置为0，limit的长度为4GB，不知道开始的null seg是什么意思
 # Bootstrap GDT
 .p2align 2                                # force 4 byte alignment
 gdt:

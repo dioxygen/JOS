@@ -279,7 +279,6 @@ page_init(void)
 		}
 		else {
 			//pages[i].pp_ref = 0;前面提到对于boot_alloc中非空闲页面的计数无效
-			//todo:这条语句需要吗？
 			pages[i].pp_link = NULL;
 		}
 	}
@@ -374,6 +373,37 @@ pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
 	// Fill this function in
+	//要把线性地址转化为指向对应PTE的指针，需要：1.判断对应的page table是否存在
+	//2.权限检查
+	//CR3还有page dir entry和page table entry中保存的都是物理地址(基址)
+	//这里搞错了，看看返回值的类型是指针，如果直接返回物理地址的话后面使用就会出错，因此这里应该返回虚拟地址
+	pte_t * pteptr;
+	uint32_t pgdiridx=PDX(va);
+	pde_t pgdentry=pgdir[pgdiridx];
+	if ((pgdentry & PTE_P) == 0){
+		if (create == 0){
+			return NULL;
+		}
+		else if (create != 0){
+			//对应的page table还没有分配页面
+			struct PageInfo *newpgt = page_alloc(ALLOC_ZERO);
+			if (newpgt != NULL){
+				//分配成功，需要增加pp_ref吗？权限呢？
+				newpgt->pp_ref++;
+				pgdir[pgdiridx] = page2pa(newpgt) | PTE_P | PTE_W;
+				pteptr = (pte_t *)(page2kva(newpgt)) + PTX(va);
+				return pteptr;
+			}
+			else 
+				return NULL;
+		}
+	}
+	else {
+		//对应的page table本身就已经存在了
+		//这里在类型转换之前就把两项加了，导致偏移不对
+		pteptr = (pte_t *)(KADDR(PTE_ADDR(pgdentry))) + PTX(va);
+		return pteptr;
+	}
 	return NULL;
 }
 
@@ -392,6 +422,22 @@ static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
+	//建立UTOP之上的连续虚拟地址到连续物理地址的映射
+	uint32_t page_num = size/PGSIZE;
+	if (size%PGSIZE!=0)
+		panic("boot_map_region failed because size is not multiple of PGSIZE!");
+	int i;
+	pte_t * pteptr; 
+	for(i=0;i < page_num;i++){
+		pteptr = pgdir_walk(pgdir,(void *)va,true);
+		if (pteptr != NULL){
+			*pteptr = (pte_t)(pa|perm|PTE_P);
+		}
+		else
+			panic("boot_map_region failed because memory is run out!");
+		va += PGSIZE;
+		pa += PGSIZE;
+	}
 }
 
 //
@@ -419,10 +465,28 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 // Hint: The TA solution is implemented using pgdir_walk, page_remove,
 // and page2pa.
 //
-int
+int	
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
+	//将虚拟地址va映射到物理页pp，并按要求设置perm
+	//要求：1.如果va已经映射先去掉映射然后添加，2.插入成功page的引用计数需要增加，3.无效之前的TLB项
+	pte_t * pgtentry = pgdir_walk(pgdir,va,true);
+	if (pgtentry ==NULL)
+		return -E_NO_MEM;
+	else {
+		//先对引用计数++，这样就负荷提示中的边界情况了
+		++pp->pp_ref; 
+		if ((*pgtentry & PTE_P) !=0){
+			//remove中已经包含无效化TLB表项了
+			page_remove(pgdir,va);
+		}
+		//va还未映射
+		physaddr_t pgtppn = page2pa(pp);
+		* pgtentry = pgtppn | perm | PTE_P;
+		//这里是根据后面的测试来的，具体page dir和page table都有权限限制时如何处理还不清楚	
+		pgdir[PDX(va)] |= perm;
+	}
 	return 0;
 }
 
@@ -441,6 +505,21 @@ struct PageInfo *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
 	// Fill this function in
+	//返回虚拟地址va映射到的page信息
+	pte_t * pgtentry = pgdir_walk(pgdir,va,0);
+	if (pgtentry==NULL){
+		return NULL;
+	}
+	else if ((*pgtentry & PTE_P)==0){
+		return NULL;
+	}
+	else {
+		if (pte_store !=NULL)
+			*pte_store = pgtentry;
+		physaddr_t pgtentrypa = PTE_ADDR(*pgtentry);
+		struct PageInfo * page = pa2page(pgtentrypa);
+		return page;
+	}
 	return NULL;
 }
 
@@ -463,6 +542,15 @@ void
 page_remove(pde_t *pgdir, void *va)
 {
 	// Fill this function in
+	//取消虚拟地址和对应物理地址之间的映射关系
+	//看来tlb的填充以及管理大多都是由硬件自动完成的
+	pte_t * pte_store; //pte_store需要不为0
+	struct PageInfo * page = page_lookup(pgdir,va,&pte_store);
+	if (page != NULL){
+		page_decref(page);
+		*pte_store = 0x0;
+		tlb_invalidate(pgdir,va);
+	}
 }
 
 //
@@ -686,7 +774,7 @@ check_kern_pgdir(void)
 // defined by the page directory 'pgdir'.  The hardware normally performs
 // this functionality for us!  We define our own version to help check
 // the check_kern_pgdir() function; it shouldn't be used elsewhere.
-
+//check_va2pa返回va对应的物理地址，没有映射时返回0xFFFFFFFF
 static physaddr_t
 check_va2pa(pde_t *pgdir, uintptr_t va)
 {
@@ -741,7 +829,9 @@ check_page(void)
 	assert(page_insert(kern_pgdir, pp1, 0x0, PTE_W) == 0);
 	assert(PTE_ADDR(kern_pgdir[0]) == page2pa(pp0));
 	assert(check_va2pa(kern_pgdir, 0x0) == page2pa(pp1));
+	//被映射之后引用计数++
 	assert(pp1->pp_ref == 1);
+	//page_alloc将这个page分配并设置为page table，引用数++
 	assert(pp0->pp_ref == 1);
 
 	// should be able to map pp2 at PGSIZE because pp0 is already allocated for page table
@@ -753,7 +843,9 @@ check_page(void)
 	assert(!page_alloc(0));
 
 	// should be able to map pp2 at PGSIZE because it's already there
+	//测试对相同pp和va再次建立映射，需要保证在第二次建立映射时最终不会导致pp释放todo
 	assert(page_insert(kern_pgdir, pp2, (void*) PGSIZE, PTE_W) == 0);
+	
 	assert(check_va2pa(kern_pgdir, PGSIZE) == page2pa(pp2));
 	assert(pp2->pp_ref == 1);
 
@@ -770,9 +862,11 @@ check_page(void)
 	assert(check_va2pa(kern_pgdir, PGSIZE) == page2pa(pp2));
 	assert(pp2->pp_ref == 1);
 	assert(*pgdir_walk(kern_pgdir, (void*) PGSIZE, 0) & PTE_U);
+	//todo：这里的权限参数也需要在page dir entry中反映出来
 	assert(kern_pgdir[0] & PTE_U);
 
-	// should be able to remap with fewer permissions
+	// should be able to remap with fewer permissions、
+	//能够在之前的权限上减少权限
 	assert(page_insert(kern_pgdir, pp2, (void*) PGSIZE, PTE_W) == 0);
 	assert(*pgdir_walk(kern_pgdir, (void*) PGSIZE, 0) & PTE_W);
 	assert(!(*pgdir_walk(kern_pgdir, (void*) PGSIZE, 0) & PTE_U));
@@ -792,6 +886,7 @@ check_page(void)
 	assert(pp2->pp_ref == 0);
 
 	// pp2 should be returned by page_alloc
+	//这边测试要保证没有映射的pp需要被释放
 	assert((pp = page_alloc(0)) && pp == pp2);
 
 	// unmapping pp1 at 0 should keep pp1 at PGSIZE
@@ -804,6 +899,7 @@ check_page(void)
 	// test re-inserting pp1 at PGSIZE
 	assert(page_insert(kern_pgdir, pp1, (void*) PGSIZE, 0) == 0);
 	assert(pp1->pp_ref);
+	//pp1在重新插入相同映射关系的时候需要保证pp是已分配的状态
 	assert(pp1->pp_link == NULL);
 
 	// unmapping pp1 at PGSIZE should free it
@@ -835,6 +931,7 @@ check_page(void)
 	pp0->pp_ref = 0;
 
 	// check that new page tables get cleared
+	//主要是在测试pgdir_walk时page table不存在时page_alloc分配得到的页面内容被置0了（ALLOC_ZERO）
 	memset(page2kva(pp0), 0xFF, PGSIZE);
 	page_free(pp0);
 	pgdir_walk(kern_pgdir, 0x0, 1);

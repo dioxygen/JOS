@@ -54,6 +54,7 @@ entry:
 
 	# Load the physical address of entry_pgdir into cr3.  entry_pgdir
 	# is defined in entrypgdir.c.
+	# 回过头来可以想一想这里，这里获取了物理地址而在后面进行jmp的时候没有
 	movl	$(RELOC(entry_pgdir)), %eax
 	movl	%eax, %cr3
 	# Turn on paging.

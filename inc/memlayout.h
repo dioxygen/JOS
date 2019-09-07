@@ -109,6 +109,7 @@
  */
 
 // User read-only virtual page table (see 'uvpt' below)
+//about UVPT:https://pdos.csail.mit.edu/6.828/2017/lec/l-josmem.html
 #define UVPT		(ULIM - PTSIZE)
 // Read-only copies of the Page structures
 #define UPAGES		(UVPT - PTSIZE)

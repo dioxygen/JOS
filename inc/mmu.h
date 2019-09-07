@@ -149,6 +149,7 @@
 #include <inc/types.h>
 
 // Segment Descriptors
+//Base总长度为32bits，Limit长度为20bits，Flags长度为12
 struct Segdesc {
 	unsigned sd_lim_15_0 : 16;  // Low bits of segment limit
 	unsigned sd_base_15_0 : 16; // Low bits of segment base address

@@ -57,6 +57,7 @@ bootmain(void)
 
 	// call the entry point from the ELF header
 	// note: does not return!
+	//为什么ELFHDR->e_entry处保存的是物理地址0x0010000c，这条语句对于的是汇编是：call *0x10018
 	((void (*)(void)) (ELFHDR->e_entry))();
 
 bad:
