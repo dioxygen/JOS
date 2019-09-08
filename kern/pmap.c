@@ -177,6 +177,7 @@ mem_init(void)
 	check_page_alloc();
 	check_page();
 
+	//这里说是要建立虚拟内存了，可是这个过程到底又是什么意思呢？todo
 	//////////////////////////////////////////////////////////////////////
 	// Now we set up virtual memory
 
@@ -187,6 +188,8 @@ mem_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
+	size_t size = ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE);
+	boot_map_region(kern_pgdir,UPAGES,size,PADDR(pages),PTE_U | PTE_P);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -199,6 +202,7 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
+	boot_map_region(kern_pgdir,KSTACKTOP-KSTKSIZE,KSTKSIZE,PADDR(bootstack) , PTE_P);	
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -208,6 +212,8 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
+	//开始把size参数设置为npages*PGSIZE，结果出错了，因此后面再检查的时候检查了pgdir中的1024个entry
+	boot_map_region(kern_pgdir,KERNBASE,0x10000000,0x0,PTE_W|PTE_P);
 
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
@@ -219,6 +225,7 @@ mem_init(void)
 	//
 	// If the machine reboots at this point, you've probably set up your
 	// kern_pgdir wrong.
+	//测试的时候这里应该卡了一下，切换cr3的时候是不是需要无效化tlb中的所有entry?
 	lcr3(PADDR(kern_pgdir));
 
 	check_page_free_list(0);
@@ -727,6 +734,8 @@ check_page_alloc(void)
 // but it is a pretty good sanity check.
 //
 
+//检查UPAGES到保存pages信息的物理地址间的映射，KERNBASE之上的逻辑地址映射，kernel stack的映射
+//检查pagedirentry中保存的权限信息
 static void
 check_kern_pgdir(void)
 {
@@ -972,6 +981,7 @@ check_page_installed_pgdir(void)
 	memset(page2kva(pp2), 2, PGSIZE);
 	page_insert(kern_pgdir, pp1, (void*) PGSIZE, PTE_W);
 	assert(pp1->pp_ref == 1);
+	//下面出现的数字是因为memset的结果
 	assert(*(uint32_t *)PGSIZE == 0x01010101U);
 	page_insert(kern_pgdir, pp2, (void*) PGSIZE, PTE_W);
 	assert(*(uint32_t *)PGSIZE == 0x02020202U);
