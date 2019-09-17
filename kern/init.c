@@ -20,6 +20,7 @@ i386_init(void)
 	// Before doing anything else, complete the ELF loading process.
 	// Clear the uninitialized global data (BSS) section of our program.
 	// This ensures that all static/global variables start out zero.
+	//在kernel.ld中说明了edata和end分别是bss节的开始与结束位置
 	memset(edata, 0, end - edata);
 
 	// Initialize the console.
@@ -44,6 +45,7 @@ i386_init(void)
 #endif // TEST*
 
 	// We only have one user environment for now, so just run it.
+	//env_free_list是按envs数组序号增序连接的，因此分配的第一个env使用的就是envs[0]
 	env_run(&envs[0]);
 }
 

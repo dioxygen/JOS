@@ -96,6 +96,7 @@ boot_alloc(uint32_t n)
 	// the first virtual address that the linker did *not* assign
 	// to any kernel code or global variables.
 	//todo:这里为什么说end是一个magic symbol而且指向了kernel的bss节的结束地址?
+	//finished:end在kernel.ld中进行了说明，是bss节的结束位置
 	if (!nextfree) {
 		extern char end[];
 		nextfree = ROUNDUP((char *) end, PGSIZE);
@@ -499,7 +500,7 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 	if (pgtentry ==NULL)
 		return -E_NO_MEM;
 	else {
-		//先对引用计数++，这样就负荷提示中的边界情况了
+		//先对引用计数++，这样就符合提示中的边界情况了
 		++pp->pp_ref; 
 		if ((*pgtentry & PTE_P) !=0){
 			//remove中已经包含无效化TLB表项了

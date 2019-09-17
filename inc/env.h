@@ -31,10 +31,15 @@ typedef int32_t envid_t;
 
 // Values of env_status in struct Env
 enum {
+	//表示该env不活跃，处在freeelist上
 	ENV_FREE = 0,
+	//表示该env是一个僵尸env，会在下次陷入内核的时候被释放
 	ENV_DYING,
+	//表示该env等待执行
 	ENV_RUNNABLE,
+	//表示该env是正在运行的env
 	ENV_RUNNING,
+	//表示该env是一个活跃的env，但是现在还没有准备好去执行
 	ENV_NOT_RUNNABLE
 };
 

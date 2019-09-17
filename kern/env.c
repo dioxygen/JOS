@@ -37,6 +37,10 @@ static struct Env *env_free_list;	// Free environment list
 struct Segdesc gdt[] =
 {
 	// 0x0 - unused (always faults -- for trapping NULL far pointers)
+	//Descriptors中包含DPL(descriptor privilege level),处理器中一个寄存器保存着当前CPL(current privilege level)
+	//寄存器中的CPL的值就是当前处理器正在执行的段的DPL
+	//当CPL为0, 1, or 2,处理器执行在特权模式.当CPL为3的时候，处理器处于用户态执行
+	//当CPU处于特权模式所有页面都可以访问（读和写），当CPU处于用户模式只能访问用户态的页面
 	SEG_NULL,
 
 	// 0x8 - kernel code segment
@@ -116,7 +120,14 @@ env_init(void)
 {
 	// Set up envs array
 	// LAB 3: Your code here.
-
+	//实际上在之前boot_alloc的时候我就用memset把env数组置零了
+	//猜猜2货的我这里写的什么？uint32_t i;for是死循环了==
+	int32_t i;
+	for(i=NENV-1;i>=0;i--){
+		envs[i].env_id = 0;
+		envs[i].env_link = env_free_list;
+		env_free_list = &envs[i];
+	}
 	// Per-CPU part of the initialization
 	env_init_percpu();
 }
@@ -179,7 +190,19 @@ env_setup_vm(struct Env *e)
 	//    - The functions in kern/pmap.h are handy.
 
 	// LAB 3: Your code here.
-
+	//ex2的bug出在这里，开的时候时候直接把p赋值给env_pgdir
+	//pgdir是指向page dir的指针，而在page dir中的每个entry存储的是page talbe起始的物理地址
+	e->env_pgdir=(pde_t *) page2kva(p);
+	p->pp_ref++;
+	uintptr_t vaaddr;
+	//虽然会写pgdir[PDX(UVPT)]，但是后面会覆盖掉
+	// for(vaaddr=UTOP;vaaddr >= UTOP;vaaddr+=PTSIZE){
+	// 	if(vaaddr<ULIM)
+	// 		e->env_pgdir[PDX(vaaddr)] = PTE_ADDR(kern_pgdir[PDX(vaaddr)])|PTE_P | PTE_U;
+	// 	else
+	// 		e->env_pgdir[PDX(vaaddr)] = PTE_ADDR(kern_pgdir[PDX(vaaddr)])|PTE_P;
+	// }
+	memcpy(e->env_pgdir, kern_pgdir, PGSIZE);
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
 	e->env_pgdir[PDX(UVPT)] = PADDR(e->env_pgdir) | PTE_P | PTE_U;
@@ -206,6 +229,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 		return -E_NO_FREE_ENV;
 
 	// Allocate and set up the page directory for this environment.
+	//想一想为什么要为新env建立pgdir
 	if ((r = env_setup_vm(e)) < 0)
 		return r;
 
@@ -267,6 +291,17 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   'va' and 'len' values that are not page-aligned.
 	//   You should round va down, and round (va + len) up.
 	//   (Watch out for corner-cases!)
+	void *base , * end;
+	struct PageInfo * pp;
+	void * indx;
+	base = (void *) ROUNDDOWN(va , PGSIZE);
+	end = (void *) ROUNDUP(va+len , PGSIZE);
+	for(indx=base;indx<end;indx+=PGSIZE){
+		pp = page_alloc(0x01);
+		if (pp==NULL)
+			panic("region_alloc: %e",-E_NO_MEM);
+		page_insert(e->env_pgdir,pp,indx,PTE_W|PTE_U);
+	}
 }
 
 //
@@ -304,6 +339,7 @@ load_icode(struct Env *e, uint8_t *binary)
 	//  'binary + ph->p_offset', should be copied to virtual address
 	//  ph->p_va.  Any remaining memory bytes should be cleared to zero.
 	//  (The ELF header should have ph->p_filesz <= ph->p_memsz.)
+	//  p_filesz和p_memsz的差值应该就是bss段
 	//  Use functions from the previous lab to allocate and map pages.
 	//
 	//  All page protection bits should be user read/write for now.
@@ -323,11 +359,37 @@ load_icode(struct Env *e, uint8_t *binary)
 	//  What?  (See env_run() and env_pop_tf() below.)
 
 	// LAB 3: Your code here.
-
+	//反正elf->e_entry需要保存到tf_eip
+	//在这里真的卡了很久，调试一下发现_binary_obj_user_hello_start地址开始的地方是0x464c457f
+	//很明显这就是ELF头部中的magic number,根据program header中的pa发现第一个段的内容目前是前128字节为0x97后面是0x0
+	//这是在check_page_free_list中设置的
+	//通过gdb调试试探，发现hello程序的代码已经在内存中了，但是并不在ELF设置的对应位置上
+	struct Elf * elfh;
+	struct Proghdr *ph,*eph;
+	uint8_t *s,*d;
+	size_t n;
+	elfh=(struct Elf *)binary;
+	if (elfh->e_magic != ELF_MAGIC)
+		panic("This binary is not an ELF!");
+	ph = (struct Proghdr *)((uint8_t *)elfh + elfh->e_phoff);
+	eph = ph + elfh->e_phnum;
+	lcr3(PADDR(e->env_pgdir));
+	for (; ph <eph; ph++){
+		if (ph->p_type  == ELF_PROG_LOAD ){
+			//怎么样实现拷贝比较好呢？
+			region_alloc(e,(void *)ph->p_va,ph->p_memsz);
+			//todo:memmove函数中从前往后最后一条内联汇编导致出现Triple fault
+			memcpy((void *)ph->p_va,(uint8_t *)elfh + ph->p_offset,ph->p_filesz);
+			memset((uint8_t *)ph->p_va + ph->p_filesz,0,ph->p_memsz-ph->p_filesz);
+		}
+	}
+	lcr3(PADDR(kern_pgdir));
+	e->env_tf.tf_eip = (uintptr_t)elfh->e_entry;
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
-
 	// LAB 3: Your code here.
+
+	region_alloc(e,(void *)(USTACKTOP - PGSIZE)	,PGSIZE);
 }
 
 //
@@ -341,6 +403,15 @@ void
 env_create(uint8_t *binary, enum EnvType type)
 {
 	// LAB 3: Your code here.
+	struct Env * e;
+	int res;
+	res=env_alloc(&e,0x0);
+	e->env_type=type;
+	if(res==0){
+		load_icode(e,binary);
+	}
+	else
+		panic("env_alloc: %e",res);
 }
 
 //
@@ -427,6 +498,7 @@ env_pop_tf(struct Trapframe *tf)
 		"\taddl $0x8,%%esp\n" /* skip tf_trapno and tf_errcode */
 		"\tiret\n"
 		: : "g" (tf) : "memory");
+	//正常应该会执行iret指令，回到中断之前的地址继续执行
 	panic("iret failed");  /* mostly to placate the compiler */
 }
 
@@ -455,9 +527,20 @@ env_run(struct Env *e)
 	//	e->env_tf.  Go back through the code you wrote above
 	//	and make sure you have set the relevant parts of
 	//	e->env_tf to sensible values.
+	//在这里需要使用(恢复)之前设置的Trapframe，因此之前需要正确设置
 
 	// LAB 3: Your code here.
-
+	if(curenv!=NULL){
+		//TODO还可能是什么状态？？？
+		if(curenv->env_status==ENV_RUNNING)
+			curenv->env_status=ENV_RUNNABLE;
+	}
+	curenv=e;
+	e->env_status=ENV_RUNNING;
+	e->env_runs++;
+	//cr3中保存的是物理地址 
+	lcr3(PADDR(e->env_pgdir));
+	env_pop_tf(&e->env_tf);
 	panic("env_run not yet implemented");
 }
 
