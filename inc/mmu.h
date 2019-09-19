@@ -254,6 +254,7 @@ struct Taskstate {
 };
 
 // Gate descriptors for interrupts and traps
+// 8B
 struct Gatedesc {
 	unsigned gd_off_15_0 : 16;   // low 16 bits of offset in segment
 	unsigned gd_sel : 16;        // segment selector

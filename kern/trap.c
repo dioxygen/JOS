@@ -20,6 +20,7 @@ static struct Trapframe *last_tf;
 /* Interrupt descriptor table.  (Must be built at run time because
  * shifted function addresses can't be represented in relocation records.)
  */
+// IDT可能包含三种类型的描述符，task gate interrupt gate trap gate
 struct Gatedesc idt[256] = { { 0 } };
 struct Pseudodesc idt_pd = {
 	sizeof(idt) - 1, (uint32_t) idt
@@ -58,14 +59,54 @@ static const char *trapname(int trapno)
 	return "(unknown trap)";
 }
 
-
+// Initialize the IDT with the addresses of handlers in trapentry.S
+// Each exception or interrupt should have its own handler
 void
 trap_init(void)
 {
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
+	//设置idt内的中断向量
+	void divide_handler();
+	void debug_handler();
+	void nmi_handler();
+	void brkpt_handler();
+	void oflow_handler();
+	void bound_handler();
+	void illop_handler();
+	void device_handler();
+	void dblflt_handler();
+	void tss_handler();
+	void segnp_handler();
+	void stack_handler();
+	void gpflt_handler();
+	void pgflt_handler();
+	void fperr_handler();
+	void align_handler();
+	void mchk_handler();
+	void simderr_handler();
+	void syscall_handler();
 
+	SETGATE(idt[T_DIVIDE],0,GD_KT,divide_handler,0);
+	SETGATE(idt[T_DEBUG],0,GD_KT,debug_handler,0);
+	SETGATE(idt[T_NMI],0,GD_KT,nmi_handler,0);
+	SETGATE(idt[T_BRKPT],0,GD_KT,brkpt_handler,0);
+	SETGATE(idt[T_OFLOW],0,GD_KT,oflow_handler,0);
+	SETGATE(idt[T_BOUND],0,GD_KT,bound_handler,0);
+	SETGATE(idt[T_ILLOP],0,GD_KT,illop_handler,0);
+	SETGATE(idt[T_DEVICE],0,GD_KT,device_handler,0);
+	SETGATE(idt[T_DBLFLT],0,GD_KT,dblflt_handler,0);
+	SETGATE(idt[T_TSS],0,GD_KT,tss_handler,0);
+	SETGATE(idt[T_SEGNP],0,GD_KT,segnp_handler,0);
+	SETGATE(idt[T_STACK],0,GD_KT,stack_handler,0);
+	SETGATE(idt[T_GPFLT],0,GD_KT,gpflt_handler,0);
+	SETGATE(idt[T_PGFLT],0,GD_KT,pgflt_handler,0);
+	SETGATE(idt[T_FPERR],0,GD_KT,fperr_handler,0);
+	SETGATE(idt[T_ALIGN],0,GD_KT,align_handler,0);
+	SETGATE(idt[T_MCHK],0,GD_KT,mchk_handler,0);
+	SETGATE(idt[T_SIMDERR],0,GD_KT,simderr_handler,0);
+	SETGATE(idt[T_SYSCALL],1,GD_KT,syscall_handler,3);
 	// Per-CPU setup 
 	trap_init_percpu();
 }
@@ -172,7 +213,6 @@ trap(struct Trapframe *tf)
 	if ((tf->tf_cs & 3) == 3) {
 		// Trapped from user mode.
 		assert(curenv);
-
 		// Copy trap frame (which is currently on the stack)
 		// into 'curenv->env_tf', so that running the environment
 		// will restart at the trap point.

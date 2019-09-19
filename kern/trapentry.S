@@ -20,6 +20,9 @@
  *   void NAME();
  * where NAME is the argument passed to TRAPHANDLER.
  */
+/* 
+ * 这里卡了挺久的，CPU发生中断或者异常的时候CPU自动将一些寄存器的值压栈（栈的位置是由TSS中的对应信息确定的）
+*/
 #define TRAPHANDLER(name, num)						\
 	.globl name;		/* define global symbol for 'name' */	\
 	.type name, @function;	/* symbol type is function */		\
@@ -46,10 +49,44 @@
 /*
  * Lab 3: Your code here for generating entry points for the different traps.
  */
-
-
+TRAPHANDLER_NOEC(divide_handler,T_DIVIDE)
+TRAPHANDLER_NOEC(debug_handler,T_DEBUG)	
+TRAPHANDLER_NOEC(nmi_handler,T_NMI)	
+TRAPHANDLER_NOEC(brkpt_handler,T_BRKPT)	
+TRAPHANDLER_NOEC(oflow_handler,T_OFLOW)	
+TRAPHANDLER_NOEC(bound_handler,T_BOUND)	
+TRAPHANDLER_NOEC(illop_handler,T_ILLOP)	
+TRAPHANDLER_NOEC(device_handler,T_DEVICE)	
+TRAPHANDLER(dblflt_handler,T_DBLFLT)	
+# 	
+TRAPHANDLER(tss_handler,T_TSS)	
+TRAPHANDLER(segnp_handler,T_SEGNP)	
+TRAPHANDLER(stack_handler,T_STACK)	
+TRAPHANDLER(gpflt_handler,T_GPFLT)	
+TRAPHANDLER(pgflt_handler,T_PGFLT)	
+# 
+TRAPHANDLER_NOEC(fperr_handler,T_FPERR)	
+TRAPHANDLER(align_handler,T_ALIGN)	
+TRAPHANDLER_NOEC(mchk_handler,T_MCHK)	
+TRAPHANDLER_NOEC(simderr_handler,T_SIMDERR)	
+# 
+TRAPHANDLER_NOEC(syscall_handler,T_SYSCALL)	
 
 /*
  * Lab 3: Your code here for _alltraps
  */
-
+/*
+ * push values to make the stack look like a struct Trapframe
+ * load GD_KD into %ds and %es
+ * pushl %esp to pass a pointer to the Trapframe as an argument to trap()
+ * call trap (can trap ever return?)
+ */
+_alltraps:
+	pushl %ds
+	pushl %es
+	pushal
+	movw $GD_KD,%ax
+	movw %ax,%ds
+	movw %ax,%es
+	pushl %esp
+	call trap	
