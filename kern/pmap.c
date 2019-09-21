@@ -197,7 +197,7 @@ mem_init(void)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
 	size_t size = ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE);
-	boot_map_region(kern_pgdir,UPAGES,size,PADDR(pages),PTE_U | PTE_P);
+	boot_map_region(kern_pgdir,UPAGES,size,PADDR(pages),PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map the 'envs' array read-only by the user at linear address UENVS
@@ -207,7 +207,7 @@ mem_init(void)
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
 	size = ROUNDUP(NENV*sizeof(struct Env), PGSIZE);
-	boot_map_region(kern_pgdir,UENVS,size,PADDR(envs),PTE_U | PTE_P);
+	boot_map_region(kern_pgdir,UENVS,size,PADDR(envs),PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -220,7 +220,7 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(kern_pgdir,KSTACKTOP-KSTKSIZE,KSTKSIZE,PADDR(bootstack) , PTE_P);	
+	boot_map_region(kern_pgdir,KSTACKTOP-KSTKSIZE,KSTKSIZE,PADDR(bootstack) , PTE_W);	
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -231,7 +231,7 @@ mem_init(void)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
 	//开始把size参数设置为npages*PGSIZE，结果出错了，因此后面再检查的时候检查了pgdir中的1024个entry
-	boot_map_region(kern_pgdir,KERNBASE,0x10000000,0x0,PTE_W|PTE_P);
+	boot_map_region(kern_pgdir,KERNBASE,0x10000000,0x0,PTE_W);
 
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
@@ -296,6 +296,7 @@ page_init(void)
 	for (i = 0; i < npages; i++) {
 		//最麻烦的是EXTPHYSMEM智商的部分那些页是空闲的的判断
 		//这里的空闲页面的链接关系怎么是后面的页指向前面的空闲页呀？
+		//这边进qemu调试的时候发现npages_basemem=160(640KBz正好是IO hole开始的地方)
 		if((i*PGSIZE>=PGSIZE&&i*PGSIZE<npages_basemem * PGSIZE)||\
 		(i*PGSIZE>=extfree&&i*PGSIZE<npages*PGSIZE)){
 			pages[i].pp_ref = 0;
@@ -333,7 +334,7 @@ page_alloc(int alloc_flags)
 		page_free_list=page_free_list->pp_link;
 		tmp->pp_link = NULL;
 		if (alloc_flags & ALLOC_ZERO){
-			memset(page2kva(tmp),0x00,PGSIZE);
+			memset(page2kva(tmp),0x0,PGSIZE);
 		}
 		return tmp;
 	}
@@ -415,7 +416,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 			if (newpgt != NULL){
 				//分配成功，需要增加pp_ref吗？权限呢？
 				newpgt->pp_ref++;
-				pgdir[pgdiridx] = page2pa(newpgt) | PTE_P | PTE_W;
+				pgdir[pgdiridx] = page2pa(newpgt) | PTE_P | PTE_W |PTE_U;
 				pteptr = (pte_t *)(page2kva(newpgt)) + PTX(va);
 				return pteptr;
 			}
