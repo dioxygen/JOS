@@ -91,7 +91,7 @@ trap_init(void)
 	SETGATE(idt[T_DIVIDE],0,GD_KT,divide_handler,0);
 	SETGATE(idt[T_DEBUG],0,GD_KT,debug_handler,0);
 	SETGATE(idt[T_NMI],0,GD_KT,nmi_handler,0);
-	SETGATE(idt[T_BRKPT],0,GD_KT,brkpt_handler,0);
+	SETGATE(idt[T_BRKPT],0,GD_KT,brkpt_handler,3);
 	SETGATE(idt[T_OFLOW],0,GD_KT,oflow_handler,0);
 	SETGATE(idt[T_BOUND],0,GD_KT,bound_handler,0);
 	SETGATE(idt[T_ILLOP],0,GD_KT,illop_handler,0);
@@ -186,6 +186,9 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
 	switch(tf->tf_trapno){
+		case T_BRKPT:
+			monitor(tf);
+			return ;
 		case T_PGFLT:
 			page_fault_handler(tf);
 			return ;
