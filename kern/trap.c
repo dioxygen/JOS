@@ -191,6 +191,7 @@ trap_dispatch(struct Trapframe *tf)
 		 * pseudo-system call that any user environment can use to invoke the JOS kernel monitor. 
 		 */
 		// todo:然而目前感觉到了一些问题，一些异常处理之后并没有返回执行原来的env
+		// finished:因为有些异常的处理方式导致处理函数没有返回，在lab3 ex7中就可以看到如何返回
 		case T_BRKPT:
 			monitor(tf);
 			return ;
