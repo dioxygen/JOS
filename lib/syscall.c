@@ -19,7 +19,7 @@ syscall(int num, int check, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	// The last clause tells the assembler that this can
 	// potentially change the condition codes and arbitrary
 	// memory locations.
-
+	// 这是扩展内联汇编格式，三个冒号后面分别是输出，输入，被更改
 	asm volatile("int %1\n"
 		     : "=a" (ret)
 		     : "i" (T_SYSCALL),

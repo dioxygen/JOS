@@ -186,12 +186,21 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
 	switch(tf->tf_trapno){
+		// 这篇文章介绍了断点调试是怎么实现的:https://zhuanlan.zhihu.com/p/34003929
+		/*In JOS we will abuse this exception slightly by turning it into a primitive 
+		 * pseudo-system call that any user environment can use to invoke the JOS kernel monitor. 
+		 */
+		// todo:然而目前感觉到了一些问题，一些异常处理之后并没有返回执行原来的env
 		case T_BRKPT:
 			monitor(tf);
 			return ;
 		case T_PGFLT:
 			page_fault_handler(tf);
 			return ;
+		case T_SYSCALL:
+			tf->tf_regs.reg_eax=syscall(tf->tf_regs.reg_eax,tf->tf_regs.reg_edx,tf->tf_regs.reg_ecx,\
+			tf->tf_regs.reg_ebx,tf->tf_regs.reg_edi,tf->tf_regs.reg_esi);
+        	return;
 		default:
 			break;
 	}

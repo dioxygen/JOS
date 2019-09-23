@@ -539,6 +539,7 @@ env_run(struct Env *e)
 	e->env_status=ENV_RUNNING;
 	e->env_runs++;
 	//cr3中保存的是物理地址 
+	// 如果从内核态转为env然后env又进入内核态，最后返回env（整个过程是同一个env）的的时候好像只需要在第一次加载CR3
 	lcr3(PADDR(e->env_pgdir));
 	env_pop_tf(&e->env_tf);
 	panic("env_run not yet implemented");
