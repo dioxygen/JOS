@@ -331,7 +331,8 @@ page_init(void)
 		//最麻烦的是EXTPHYSMEM智商的部分那些页是空闲的的判断
 		//这里的空闲页面的链接关系怎么是后面的页指向前面的空闲页呀？
 		//这边进qemu调试的时候发现npages_basemem=160(640KBz正好是IO hole开始的地方)
-		if((i*PGSIZE>=PGSIZE&&i*PGSIZE<npages_basemem * PGSIZE)||\
+		if((i*PGSIZE>=PGSIZE&&i*PGSIZE<MPENTRY_PADDR)||\
+		(i*PGSIZE>=MPENTRY_PADDR+PGSIZE&&i*PGSIZE<npages_basemem * PGSIZE)||\
 		(i*PGSIZE>=extfree&&i*PGSIZE<npages*PGSIZE)){
 			pages[i].pp_ref = 0;
 			pages[i].pp_link = page_free_list;
@@ -657,7 +658,14 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	uintptr_t res = base;
+	size = ROUNDUP(size,PGSIZE);
+	if(base + size > MMIOLIM)
+		panic("mmio_map_region overflow MMIOLIM!");
+	boot_map_region(kern_pgdir,base,size,PGNUM(pa),PTE_W|PTE_PCD|PTE_PWT);
+	base += size;
+	return (void *)res;
+	//panic("mmio_map_region not implemented");
 }
 
 static uintptr_t user_mem_check_addr;
