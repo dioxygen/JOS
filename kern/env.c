@@ -515,7 +515,6 @@ env_pop_tf(struct Trapframe *tf)
 {
 	// Record the CPU we are running on for user-space debugging
 	curenv->env_cpunum = cpunum();
-
 	asm volatile(
 		"\tmovl %0,%%esp\n"
 		"\tpopal\n"
@@ -567,6 +566,8 @@ env_run(struct Env *e)
 	//cr3中保存的是物理地址 
 	// 如果从内核态转为env然后env又进入内核态，最后返回env（整个过程是同一个env）的的时候好像只需要在第一次加载CR3
 	lcr3(PADDR(e->env_pgdir));
+	//开始我把unlock放在env_pop_tf函数开始，结果多核时调度结果有点问题，存疑，好像是随机的
+	unlock_kernel();
 	env_pop_tf(&e->env_tf);
 	panic("env_run not yet implemented");
 }
