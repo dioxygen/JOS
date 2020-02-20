@@ -43,6 +43,7 @@ dumbfork(void)
 	envid_t envid;
 	uint8_t *addr;
 	int r;
+	//end应该是/user/user.ld中的符号，类似于/kernel/kernel.ld中的end符号
 	extern unsigned char end[];
 
 	// Allocate a new child environment.
@@ -69,6 +70,7 @@ dumbfork(void)
 		duppage(envid, addr);
 
 	// Also copy the stack we are currently running on.
+	//TODO:为什么认为栈的位置在这里没理解
 	duppage(envid, ROUNDDOWN(&addr, PGSIZE));
 
 	// Start the child environment running
