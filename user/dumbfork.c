@@ -70,7 +70,8 @@ dumbfork(void)
 		duppage(envid, addr);
 
 	// Also copy the stack we are currently running on.
-	//TODO:为什么认为栈的位置在这里没理解
+	//TODO:为什么认为栈的位置在这里不能完全理解，为什么不直接用USTACKTOP-PGSIZE?
+	//可能是因为因此addr位于栈上非常考下的位置，可以通过addr位置来判断栈的使用情况
 	duppage(envid, ROUNDDOWN(&addr, PGSIZE));
 
 	// Start the child environment running

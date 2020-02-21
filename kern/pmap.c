@@ -663,11 +663,13 @@ mmio_map_region(physaddr_t pa, size_t size)
 	//
 	// Your code here:
 	uintptr_t res = base;
-	size = ROUNDUP(size,PGSIZE);
+	size = ROUNDUP(pa+size,PGSIZE);
+	pa = ROUNDDOWN(pa,PGSIZE);
+	size = size - pa;
 	if(base + size > MMIOLIM)
 		panic("mmio_map_region overflow MMIOLIM!");
 	//开始将物理地址设置为PGNUM(pa)，是错误的
-	boot_map_region(kern_pgdir,base,size,PTE_ADDR(pa),PTE_W|PTE_PCD|PTE_PWT);
+	boot_map_region(kern_pgdir,base,size,pa,PTE_W|PTE_PCD|PTE_PWT);
 	base += size;
 	return (void *)res;
 	//panic("mmio_map_region not implemented");

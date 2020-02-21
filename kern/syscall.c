@@ -87,10 +87,12 @@ sys_exofork(void)
 	envid_t res;
 	struct Env *e;
 	res = env_alloc(&e,curenv->env_id);
+	if(res<0)
+		return res;
 	e->env_status = ENV_NOT_RUNNABLE;
 	e->env_tf = curenv->env_tf;
 	e->env_tf.tf_regs.reg_eax = 0;
-	return res<0?res:e->env_id;
+	return e->env_id;
 	//panic("sys_exofork not implemented");
 }
 
@@ -116,6 +118,8 @@ sys_env_set_status(envid_t envid, int status)
 	if((status !=ENV_RUNNABLE) && (status != ENV_NOT_RUNNABLE))
 		return -E_INVAL;
 	res = envid2env(envid,&e,1);
+	if(res<0)
+		return res;
 	e->env_status = status;
 	return res;
 	//panic("sys_env_set_status not implemented");
@@ -133,7 +137,14 @@ static int
 sys_env_set_pgfault_upcall(envid_t envid, void *func)
 {
 	// LAB 4: Your code here.
-	panic("sys_env_set_pgfault_upcall not implemented");
+	int res=0;
+	struct Env *e=NULL;
+	res=envid2env(envid,&e,1);
+	if(e){
+		e->env_pgfault_upcall=func;
+	}
+	return res;
+	//panic("sys_env_set_pgfault_upcall not implemented");
 }
 
 // Allocate a page of memory and map it at 'va' with permission
@@ -169,7 +180,7 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	res=envid2env(envid,&e,1);
 	if(res<0)
 		return res;
-	if((uint32_t)va>UTOP||(uint32_t)va%PGSIZE!=0){
+	if((uint32_t)va>=UTOP||(uint32_t)va%PGSIZE!=0){
 		res=-E_INVAL;
 		return res;
 	}
@@ -225,7 +236,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	res=envid2env(dstenvid,&dste,1);
 	if(res<0)
 		return res;
-	if((uint32_t)srcva>UTOP||(uint32_t)srcva%PGSIZE!=0||(uint32_t)dstva>UTOP||(uint32_t)dstva%PGSIZE!=0){
+	if((uint32_t)srcva>=UTOP||(uint32_t)srcva%PGSIZE!=0||(uint32_t)dstva>=UTOP||(uint32_t)dstva%PGSIZE!=0){
 		res=-E_INVAL;
 		return res;
 	}
@@ -266,7 +277,7 @@ sys_page_unmap(envid_t envid, void *va)
 	res=envid2env(envid,&e,1);
 	if(res<0)
 		return res;
-	if((uint32_t)va>UTOP||(uint32_t)va%PGSIZE!=0){
+	if((uint32_t)va>=UTOP||(uint32_t)va%PGSIZE!=0){
 		res=-E_INVAL;
 		return res;
 	}
@@ -376,6 +387,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			break;
 		case SYS_env_set_status:
 			res=sys_env_set_status((envid_t)a1,(int)a2);
+			break;
+		//半天运行结果不对，结果是这里忘记加break...
+		case SYS_env_set_pgfault_upcall:
+			res=sys_env_set_pgfault_upcall((envid_t)a1,(void *)a2);
 			break;
 		case SYS_yield:
 			sys_yield();
