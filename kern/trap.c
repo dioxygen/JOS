@@ -377,6 +377,7 @@ page_fault_handler(struct Trapframe *tf)
 	if(curenv->env_pgfault_upcall){
 		//user_mem_assert(curenv,(void *)UXSTACKTOP-PGSIZE,PGSIZE,PTE_W);
 		if(tf->tf_esp<UXSTACKTOP&&tf->tf_esp>=UXSTACKTOP-PGSIZE){
+			//需要额外减4是在处理嵌套page falut的情况，因为-4留出的空间是用于保存eip来返回trap-time，并且不影响exception栈上的有用信息
 			utaddr=(uint32_t)tf->tf_esp-sizeof(struct UTrapframe)-4;
 		}
 		//build UTrapframe
@@ -392,6 +393,7 @@ page_fault_handler(struct Trapframe *tf)
 		*(--utrap)=tf->tf_err;
 		*(--utrap)=fault_va;//CR2寄存器中保存了Page Fault时的fault_va地址信息;
 		*/
+		//这里检查的size需要考虑上面-4的情况吗？
 		user_mem_assert(curenv,(void *)utrap,sizeof(struct UTrapframe),PTE_W);
 		utrap->utf_esp=tf->tf_esp;
 		utrap->utf_eflags=tf->tf_eflags;
