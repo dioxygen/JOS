@@ -33,13 +33,16 @@ sched_yield(void)
 	if(curenv!=NULL)
 		sched = (curenv==envs+NENV-1)?envs:curenv+1;
 	for(i=0;i<NENV;i++){
-		if((sched->env_status==ENV_RUNNABLE)||(sched==curenv)){
+		if(sched->env_status==ENV_RUNNABLE){
 			//env_run will not return!
 			//cprintf("CPU %d:\n",cpunum());
 			env_run(sched);
 		}
 		sched=(sched==envs+NENV-1)?envs:sched+1;
 	}
+	//我的天呐！之前为了代码简洁，直接在当curenv存在时就运行curenv，但是后面的测试中会出现curenv的状态未必是正在运行的情况
+	if(curenv&&curenv->env_status==ENV_RUNNING)
+		env_run(curenv);
 	// sched_halt never returns
 	sched_halt();
 }
