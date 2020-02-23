@@ -114,7 +114,7 @@ fork(void)
 	if(envid==0){
 		//子进程
 		thisenv=envs+ENVX(sys_getenvid());
-		cprintf("env %d start\n",thisenv->env_id);
+		//cprintf("env %d start\n",thisenv->env_id);
 		//set_pgfault_handler(pgfault);
 		return 0;
 	}
