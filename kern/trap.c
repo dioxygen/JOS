@@ -132,10 +132,10 @@ trap_init(void)
 	SETGATE(idt[T_SYSCALL],0,GD_KT,syscall_handler,3);
 	
 	SETGATE(idt[IRQ_OFFSET],0,GD_KT,irq0_handler,0);
-	SETGATE(idt[IRQ_OFFSET+1],0,GD_KT,irq1_handler,0);
+	SETGATE(idt[IRQ_OFFSET+IRQ_KBD],0,GD_KT,irq1_handler,0);
 	SETGATE(idt[IRQ_OFFSET+2],0,GD_KT,irq2_handler,0);
 	SETGATE(idt[IRQ_OFFSET+3],0,GD_KT,irq3_handler,0);
-	SETGATE(idt[IRQ_OFFSET+4],0,GD_KT,irq4_handler,0);
+	SETGATE(idt[IRQ_OFFSET+IRQ_SERIAL],0,GD_KT,irq4_handler,0);
 	SETGATE(idt[IRQ_OFFSET+5],0,GD_KT,irq5_handler,0);
 	SETGATE(idt[IRQ_OFFSET+6],0,GD_KT,irq6_handler,0);
 	SETGATE(idt[IRQ_OFFSET+7],0,GD_KT,irq7_handler,0);
@@ -294,7 +294,15 @@ trap_dispatch(struct Trapframe *tf)
 
 	// Handle keyboard and serial interrupts.
 	// LAB 5: Your code here.
-
+	if(tf->tf_trapno == IRQ_OFFSET+IRQ_KBD){
+		kbd_intr();
+		return;
+	}
+	
+	if(tf->tf_trapno == IRQ_OFFSET+IRQ_SERIAL){
+		serial_intr();
+		return;
+	}
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
 	if (tf->tf_cs == GD_KT)
