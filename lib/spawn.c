@@ -302,6 +302,17 @@ static int
 copy_shared_pages(envid_t child)
 {
 	// LAB 5: Your code here.
+	unsigned pn;
+	int r;
+	void *addr;
+	for(pn=0;pn<PGNUM(USTACKTOP);pn++){
+		//开始想偷懒，直接判断uvpt[pn]&PTE_P，会导致后面page fault出问题，必须要判断页目录项是否存在
+		if((uvpd[PDX(pn*PGSIZE)]&PTE_P)&&(uvpt[pn]&PTE_P)&&(uvpt[pn]&PTE_U)&&((uvpt[pn]&PTE_SHARE)==PTE_SHARE)){
+			addr=(void *)(pn*PGSIZE);
+			if((r=sys_page_map(0,addr,child,addr,uvpt[pn]&PTE_SYSCALL))<0)
+				return r;
+		}
+	}
 	return 0;
 }
 
