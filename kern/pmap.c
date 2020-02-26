@@ -709,6 +709,7 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 		ptentry = pgdir_walk(env->env_pgdir,(void *)ind,0);
 		if(ind>ULIM||ptentry==NULL||(*ptentry&(perm|PTE_P))!=(perm|PTE_P)){
 			user_mem_check_addr = ind>(uint32_t)va?ind:(uint32_t)va;
+			//cprintf("ind>ULIM:%d,ptentry==NULL:%d,ptentry:%x,perm|PTE_P:%x,perm:%x\n",ind>ULIM,ptentry==NULL,*ptentry&(perm|PTE_P),perm|PTE_P,perm);
 			return -E_FAULT;
 		}
 	}

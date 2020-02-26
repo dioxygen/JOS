@@ -355,7 +355,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	if((uint32_t)srcva<UTOP){
 		if(((uint32_t)srcva%PGSIZE!=0)||((perm&(PTE_U|PTE_P))!=(PTE_U|PTE_P))||(perm&~(PTE_U|PTE_P|PTE_AVAIL|PTE_W)))
 			return -E_INVAL;
-		if((r=user_mem_check(curenv,srcva,1,perm|PTE_P))<0)
+		if((r=user_mem_check(curenv,srcva,1,perm&PTE_W))<0)
 			return -E_INVAL;
 		dstva=rec->env_ipc_dstva;
 		if(((uint32_t)dstva<UTOP)&&((uint32_t)dstva%PGSIZE==0)){
