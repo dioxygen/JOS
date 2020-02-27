@@ -189,7 +189,8 @@ trap_init_percpu(void)
 	//注意不要太激动，这里是设置esp0，并不需要在下面的结果上再减KSTKSIZE
 	thiscpu->cpu_ts.ts_esp0 = KSTACKTOP - thiscpu->cpu_id * (KSTKSIZE + KSTKGAP);
 	thiscpu->cpu_ts.ts_ss0 = GD_KD;
-
+	thiscpu->cpu_ts.ts_iomb = sizeof(struct Taskstate);
+	
 	// Initialize the TSS slot of the gdt.
 	gdt[(GD_TSS0 >> 3) + thiscpu->cpu_id] = SEG16(STS_T32A, (uint32_t) (&(thiscpu->cpu_ts)),
 					sizeof(struct Taskstate) - 1, 0);
