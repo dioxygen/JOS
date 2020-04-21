@@ -299,6 +299,7 @@ typedef uint8_t pci_revision_t;
 /*
  * PCI BIST/Header Type/Latency Timer/Cache Line Size Register.
  */
+//table 4-1
 #define	PCI_BHLC_REG			0x0c
 
 #define	PCI_BIST_SHIFT				24
