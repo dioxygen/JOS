@@ -3,8 +3,12 @@
 
 #include <kern/pci.h>
 
-#define VENDOR_ID_82540EM 0x8086
-#define DEVICE_ID_82540EM 0x100E
+// #define VENDOR_ID_82540EM 0x8086
+// #define DEVICE_ID_82540EM 0x100E
+#define E1000_VENDOR_ID_82540EM 0x8086
+#define E1000_DEV_ID_82540EM 0x100E
+
+#define E1000_STATUS   0x00008  /* Device Status - RO */
 
 int pci_e1000_attach(struct pci_func *pcif);
 
