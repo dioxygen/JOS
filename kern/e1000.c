@@ -1,10 +1,13 @@
 #include <kern/e1000.h>
 #include <kern/pmap.h>
+#include <inc/error.h>
 
 // LAB 6: Your driver code here
 #define TX_DESC_NUM 64
 #define PACKET_MAX_SIZE 1518
-
+#define TDESC_STATUS_DD 1
+#define TDESC_CMD_EOP 1
+#define TDESC_CMD_RS 0x8
 volatile uint32_t *e1000_reg;
 
 struct tx_desc
@@ -28,8 +31,7 @@ static void e1000_transmit_init(){
 	int i;
 	for(i=0;i<TX_DESC_NUM;i++){
 		tx_ring[i].addr=PADDR(&packet_buffer[i][0]);
-		tx_ring[i].length=PACKET_MAX_SIZE;
-		tx_ring[i].cmd=1<<3;
+		tx_ring[i].status=TDESC_STATUS_DD;
 		// tx_ring[i].cso=0;
 		// tx_ring[i].status&=0x0f;
 	}
@@ -44,11 +46,24 @@ static void e1000_transmit_init(){
 	e1000_reg[E1000_TIPG/4]=10|(4<<10)|(6<<20);
 }
 
+int transmit_packet(void *va,uint16_t length){
+	uint32_t index;
+	index=e1000_reg[E1000_TDT/4];
+	if(tx_ring[index].status&TDESC_STATUS_DD){
+		tx_ring[index].length=length;
+		tx_ring[index].cmd=TDESC_CMD_RS|TDESC_CMD_EOP;
+		tx_ring[index].status&=~TDESC_STATUS_DD;
+		e1000_reg[E1000_TDT/4]=(index+1)%TX_DESC_NUM;
+		return 0;
+	}
+	return -E_TXRING_FULL;
+}
 int pci_e1000_attach(struct pci_func *pcif){
 	pci_func_enable(pcif);
     e1000_reg=mmio_map_region(pcif->reg_base[0],pcif->reg_size[0]);
     assert(e1000_reg[E1000_STATUS/4]==0x80080783);
 	//transmit init
 	e1000_transmit_init();
+	//transmit_packet(0,0x2a);
 	return 1;
 }
