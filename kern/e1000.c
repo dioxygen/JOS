@@ -1,6 +1,7 @@
 #include <kern/e1000.h>
 #include <kern/pmap.h>
 #include <inc/error.h>
+#include <inc/string.h>
 
 // LAB 6: Your driver code here
 #define TX_DESC_NUM 64
@@ -53,6 +54,7 @@ int transmit_packet(void *va,uint16_t length){
 		tx_ring[index].length=length;
 		tx_ring[index].cmd=TDESC_CMD_RS|TDESC_CMD_EOP;
 		tx_ring[index].status&=~TDESC_STATUS_DD;
+		memcmp(packet_buffer[index],va,length);
 		e1000_reg[E1000_TDT/4]=(index+1)%TX_DESC_NUM;
 		return 0;
 	}
@@ -64,6 +66,7 @@ int pci_e1000_attach(struct pci_func *pcif){
     assert(e1000_reg[E1000_STATUS/4]==0x80080783);
 	//transmit init
 	e1000_transmit_init();
-	//transmit_packet(0,0x2a);
+	// char *data="I'm here!";
+	// transmit_packet(data,0x2a);
 	return 1;
 }

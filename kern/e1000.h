@@ -25,5 +25,6 @@
 #define E1000_STATUS   0x00008  /* Device Status - RO */
 
 int pci_e1000_attach(struct pci_func *pcif);
+int transmit_packet(void *va,uint16_t length);
 
 #endif  // SOL >= 6
