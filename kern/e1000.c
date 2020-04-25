@@ -31,15 +31,15 @@ char packet_buffer[TX_DESC_NUM][PACKET_MAX_SIZE];
 static void e1000_transmit_init(){
 	int i;
 	for(i=0;i<TX_DESC_NUM;i++){
-		tx_ring[i].addr=PADDR(&packet_buffer[i][0]);
+		tx_ring[i].addr=PADDR(packet_buffer[i]);
 		tx_ring[i].status=TDESC_STATUS_DD;
 		// tx_ring[i].cso=0;
 		// tx_ring[i].status&=0x0f;
 	}
 	e1000_reg[E1000_TDBAL/4]=PADDR(&tx_ring[0]);
 	e1000_reg[E1000_TDBAH/4]=0;
-	//
-	e1000_reg[E1000_TDLEN/4]=TX_DESC_NUM<<7;
+	//not byte size
+	e1000_reg[E1000_TDLEN/4]=TX_DESC_NUM>>3<<7;
 	e1000_reg[E1000_TDH/4]=0;
 	//index not byte offset
 	e1000_reg[E1000_TDT/4]=0;
@@ -54,7 +54,7 @@ int transmit_packet(void *va,uint16_t length){
 		tx_ring[index].length=length;
 		tx_ring[index].cmd=TDESC_CMD_RS|TDESC_CMD_EOP;
 		tx_ring[index].status&=~TDESC_STATUS_DD;
-		memcmp(packet_buffer[index],va,length);
+		memcpy(packet_buffer[index],va,length);
 		e1000_reg[E1000_TDT/4]=(index+1)%TX_DESC_NUM;
 		return 0;
 	}

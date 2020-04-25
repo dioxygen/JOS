@@ -126,5 +126,5 @@ sys_time_msec(void)
 int
 sys_transmit_packet(void *va , uint16_t length)
 {
-	return syscall(SYS_transmit_packet, (uint32_t)va, (uint32_t)length, 0, 0, 0, 0);
+	return syscall(SYS_transmit_packet, 0, (uint32_t)va, (uint32_t)length, 0, 0, 0);
 }
