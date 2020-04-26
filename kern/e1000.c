@@ -9,6 +9,7 @@
 #define PACKET_MAX_SIZE 1518
 #define RX_BUFFER_SIZE 2048
 #define TDESC_STATUS_DD 1
+#define RDESC_STATUS_DD 1
 #define TDESC_CMD_EOP 1
 #define TDESC_CMD_RS 0x8
 //52:54:00:12:34:56, but this is written from lowest-order byte to highest-order byte
@@ -99,6 +100,23 @@ static void e1000_receive_init(){
 	e1000_reg[E1000_RDH/4]=0;
 	e1000_reg[E1000_RDT/4]=RX_DESC_NUM-1;
 	e1000_reg[E1000_RCTL/4]=E1000_RCTL_EN|E1000_RCTL_BAM|E1000_RCTL_SZ_2048|E1000_RCTL_SECRC;
+}
+
+int receive_packet(void * va,uint16_t length){
+	static uint32_t index=0;
+	if(!(rx_ring[index].status&RDESC_STATUS_DD)){
+		return -E_RXRING_EMPTY;
+	}
+	if(rx_ring[index].errors){
+		cprintf("receive_packet error\n");
+		return -E_RECEIVE_ERROR;
+	}
+	assert(rx_ring[index].length<=length);
+	memcpy(va,receive_buffer[index],rx_ring[index].length);
+	rx_ring[index].status=0;
+	e1000_reg[E1000_RDT/4]=index;
+	index=(index+1)%RX_DESC_NUM;
+	return 0;
 }
 
 int pci_e1000_attach(struct pci_func *pcif){

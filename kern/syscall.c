@@ -429,6 +429,23 @@ int sys_transmit_packet(void *va , uint16_t length){
 	return transmit_packet(va,length);
 }
 
+int sys_receive_packet(void *va,uint16_t length){
+	user_mem_assert(curenv,va,length,PTE_W);
+	// int res=receive_packet(va,length);
+	//rx_ring empty
+	// if(res<0)
+	// {
+	// 	rx_ring_empty=true;
+	// 	sys_receivce_args.address=va;
+	// 	sys_receivce_args.size=length;
+	// 	sys_receivce_args.blocked_env=curenv->env_id;
+	// 	curenv->env_status=ENV_NOT_RUNNABLE;
+	// 	sched_yield();
+	// }
+	// return 0;
+	return receive_packet(va,length);
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -487,6 +504,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			break;
 		case SYS_transmit_packet:
 			res=sys_transmit_packet((void *)a1,(uint16_t)a2);
+			break;
+		case SYS_receive_packet:
+			res=sys_receive_packet((void *)a1,(uint16_t)a2);
 			break;
 		default:
 			return -E_INVAL;

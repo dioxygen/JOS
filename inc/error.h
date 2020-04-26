@@ -16,6 +16,8 @@ enum {
 
 	E_IPC_NOT_RECV	,	// Attempt to send to env that is not recving
 	E_TXRING_FULL	,
+	E_RXRING_EMPTY,
+	E_RECEIVE_ERROR,
 	E_EOF		,	// Unexpected end of file
 
 	// File system error codes -- only seen in user-level
