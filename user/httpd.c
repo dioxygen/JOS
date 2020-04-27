@@ -77,7 +77,13 @@ static int
 send_data(struct http_request *req, int fd)
 {
 	// LAB 6: Your code here.
-	panic("send_data not implemented");
+	//panic("send_data not implemented");
+	char buf[512];
+	int size;
+	while((size=read(fd,buf,512))>0){
+		write(req->sock,buf,size);
+	}
+	return 0;
 }
 
 static int
@@ -137,6 +143,7 @@ send_header_fin(struct http_request *req)
 }
 
 // given a request, this function creates a struct http_request
+// http请求报文由请求行、请求头、空行和请求数据组成，此处解析请求行信息
 static int
 http_request_parse(struct http_request *req, char *request)
 {
@@ -210,6 +217,7 @@ send_error(struct http_request *req, int code)
 	return 0;
 }
 
+// 返回请求的对应文件内容，需要按照http相应报文格式回复：状态行，消息报头，空行，响应正文
 static int
 send_file(struct http_request *req)
 {
@@ -223,8 +231,23 @@ send_file(struct http_request *req)
 	// set file_size to the size of the file
 
 	// LAB 6: Your code here.
-	panic("send_file not implemented");
-
+	// panic("send_file not implemented");
+	char *path=req->url;
+	// path=index.html";
+	// cprintf("http request url:%s\n",req->url);
+	// open目录时返回值不也是0吗？
+	if((fd=open(path,O_RDONLY))<0){
+		send_error(req, 404);
+		goto end;
+	}
+	cprintf("fd=%d",fd);
+	struct Stat stat;
+	fstat(fd,&stat);
+	if(stat.st_isdir){
+		send_error(req, 404);
+		goto end;
+	}
+	file_size=stat.st_size;
 	if ((r = send_header(req, 200)) < 0)
 		goto end;
 
