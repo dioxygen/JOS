@@ -102,7 +102,7 @@ static void e1000_receive_init(){
 	e1000_reg[E1000_RCTL/4]=E1000_RCTL_EN|E1000_RCTL_BAM|E1000_RCTL_SZ_2048|E1000_RCTL_SECRC;
 }
 
-int receive_packet(void * va,uint16_t length){
+int receive_packet(void * va,uint32_t *length){
 	static uint32_t index=0;
 	if(!(rx_ring[index].status&RDESC_STATUS_DD)){
 		return -E_RXRING_EMPTY;
@@ -111,8 +111,8 @@ int receive_packet(void * va,uint16_t length){
 		cprintf("receive_packet error\n");
 		return -E_RECEIVE_ERROR;
 	}
-	assert(rx_ring[index].length<=length);
-	memcpy(va,receive_buffer[index],rx_ring[index].length);
+	*length=rx_ring[index].length;
+	memcpy(va,receive_buffer[index],*length);
 	rx_ring[index].status=0;
 	e1000_reg[E1000_RDT/4]=index;
 	index=(index+1)%RX_DESC_NUM;

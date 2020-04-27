@@ -71,6 +71,6 @@
 
 int pci_e1000_attach(struct pci_func *pcif);
 int transmit_packet(void *va,uint16_t length);
-int receive_packet(void * va,uint16_t length);
+int receive_packet(void * va,uint32_t *length);
 
 #endif  // SOL >= 6

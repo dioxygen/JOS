@@ -429,8 +429,8 @@ int sys_transmit_packet(void *va , uint16_t length){
 	return transmit_packet(va,length);
 }
 
-int sys_receive_packet(void *va,uint16_t length){
-	user_mem_assert(curenv,va,length,PTE_W);
+int sys_receive_packet(void *va,uint32_t *length){
+	//user_mem_assert(curenv,va,length,PTE_W);
 	// int res=receive_packet(va,length);
 	//rx_ring empty
 	// if(res<0)
@@ -506,7 +506,7 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			res=sys_transmit_packet((void *)a1,(uint16_t)a2);
 			break;
 		case SYS_receive_packet:
-			res=sys_receive_packet((void *)a1,(uint16_t)a2);
+			res=sys_receive_packet((void *)a1,(uint32_t *)a2);
 			break;
 		default:
 			return -E_INVAL;
